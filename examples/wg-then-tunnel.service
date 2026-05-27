@@ -1,0 +1,46 @@
+[Unit]
+Description=SSH tunnel over WireGuard to remote service on private LAN
+Documentation=https://github.com/MatheusHenriquePrates/ssh-tunnel-systemd-template
+# Wait for the WireGuard interface that carries the SSH traffic to come up.
+# Without this, the unit can race with wg-quick on boot and fail forever
+# until manual restart.
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+Requires=wg-quick@wg0.service
+
+[Service]
+Type=simple
+User=tunneluser
+
+# --- Required: edit these ---
+Environment=TUNNEL_KEY=/home/tunneluser/.ssh/tunnel_key
+Environment=TUNNEL_USER=jumpbox
+# Address inside the WireGuard tunnel (not a public IP).
+Environment=TUNNEL_HOST=10.10.0.2
+Environment=TUNNEL_SSH_PORT=22
+Environment=LOCAL_PORT=15432
+# REMOTE_HOST/REMOTE_PORT sit on the private LAN reachable from TUNNEL_HOST,
+# not from this server directly.
+Environment=REMOTE_HOST=192.168.1.10
+Environment=REMOTE_PORT=5432
+
+ExecStart=/usr/bin/ssh -N \
+  -i ${TUNNEL_KEY} \
+  -o StrictHostKeyChecking=accept-new \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  -o ExitOnForwardFailure=yes \
+  -o ConnectTimeout=15 \
+  -L ${LOCAL_PORT}:${REMOTE_HOST}:${REMOTE_PORT} \
+  -p ${TUNNEL_SSH_PORT} \
+  ${TUNNEL_USER}@${TUNNEL_HOST}
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

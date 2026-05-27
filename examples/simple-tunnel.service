@@ -1,0 +1,40 @@
+[Unit]
+Description=Persistent SSH tunnel to remote database
+Documentation=https://github.com/MatheusHenriquePrates/ssh-tunnel-systemd-template
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tunneluser
+
+# --- Required: edit these ---
+Environment=TUNNEL_KEY=/home/tunneluser/.ssh/tunnel_key
+Environment=TUNNEL_USER=bastion
+Environment=TUNNEL_HOST=bastion.example.com
+Environment=TUNNEL_SSH_PORT=22
+Environment=LOCAL_PORT=15432
+Environment=REMOTE_HOST=10.0.0.10
+Environment=REMOTE_PORT=5432
+
+# The ssh flags below are the ones that actually keep the tunnel alive.
+# See README.md for a line-by-line explanation.
+ExecStart=/usr/bin/ssh -N \
+  -i ${TUNNEL_KEY} \
+  -o StrictHostKeyChecking=accept-new \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  -o ExitOnForwardFailure=yes \
+  -o ConnectTimeout=15 \
+  -L ${LOCAL_PORT}:${REMOTE_HOST}:${REMOTE_PORT} \
+  -p ${TUNNEL_SSH_PORT} \
+  ${TUNNEL_USER}@${TUNNEL_HOST}
+
+Restart=always
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

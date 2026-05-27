@@ -1,0 +1,12 @@
+*.key
+*.pem
+id_rsa
+id_ed25519
+known_hosts
+.env
+.env.*
+!.env.example
+*.log
+*.bak
+*.swp
+.DS_Store
